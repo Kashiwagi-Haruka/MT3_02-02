@@ -42,29 +42,44 @@ void Ball::Draw(const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewPort
 	const float kLonEvery = 2.0f * float(M_PI) / float(kSubdivision);
 	const float kLatEvery = float(M_PI) / float(kSubdivision);
 
+
+
+	Matrix4x4 worldMatrix = fn.MakeTranslateMatrix(sphere.center);
+
+	Matrix4x4 worldViewProjectionMatrix = fn.Multiply(worldMatrix, viewProjectionMatrix);
+
 	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
 		float lat = -float(M_PI) / 2.0f + kLatEvery * latIndex;
-		float latNext = lat + kLatEvery;
 
 		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-			float lon = kLonEvery * lonIndex;
-			float lonNext = lon + kLonEvery;
+			float lon = lonIndex * kLonEvery;
 
+			// 球面上の3点をワールド空間で計算
 			Vector3 a = {
-			    sphere.center.x + sphere.radius * std::cosf(lat) * std::cosf(lon), sphere.center.y + sphere.radius * std::sinf(lat), sphere.center.z + sphere.radius * std::cosf(lat) * std::sinf(lon)};
+			    sphere.radius * cosf(lat) * cosf(lon),
+			    sphere.radius * sinf(lat),
+			    sphere.radius * cosf(lat) * sinf(lon),
+			};
+
 			Vector3 b = {
-			    sphere.center.x + sphere.radius * std::cosf(lat) * std::cosf(lonNext), sphere.center.y + sphere.radius * std::sinf(lat),
-			    sphere.center.z + sphere.radius * std::cosf(lat) * std::sinf(lonNext)};
+			    sphere.radius * cosf(lat + kLatEvery) * cosf(lon),
+			    sphere.radius * sinf(lat + kLatEvery),
+			    sphere.radius * cosf(lat + kLatEvery) * sinf(lon),
+			};
+
 			Vector3 c = {
-			    sphere.center.x + sphere.radius * std::cosf(latNext) * std::cosf(lon), sphere.center.y + sphere.radius * std::sinf(latNext),
-			    sphere.center.z + sphere.radius * std::cosf(latNext) * std::sinf(lon)};
+			    sphere.radius * cosf(lat + kLatEvery) * cosf(lon + kLonEvery),
+			    sphere.radius * sinf(lat + kLatEvery),
+			    sphere.radius * cosf(lat + kLatEvery) * sinf(lon + kLonEvery),
+			};
 
-			Vector3 screenA = fn.Transform(fn.Transform(a, viewProjectionMatrix), viewPortMatrix);
-			Vector3 screenB = fn.Transform(fn.Transform(b, viewProjectionMatrix), viewPortMatrix);
-			Vector3 screenC = fn.Transform(fn.Transform(c, viewProjectionMatrix), viewPortMatrix);
+			// 画面座標へ変換（ワールド → WVP → ビューポート）
+			a = fn.Transform(fn.Transform(a, worldViewProjectionMatrix), viewPortMatrix);
+			b = fn.Transform(fn.Transform(b, worldViewProjectionMatrix), viewPortMatrix);
+			c = fn.Transform(fn.Transform(c, worldViewProjectionMatrix), viewPortMatrix);
 
-			Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenB.x), int(screenB.y), color);
-			Novice::DrawLine(int(screenC.x), int(screenC.y), int(screenA.x), int(screenA.y), color);
+			Novice::DrawLine((int)a.x, (int)a.y, (int)b.x, (int)b.y, color);
+			Novice::DrawLine((int)b.x, (int)b.y, (int)c.x, (int)c.y, color);
 		}
 	}
 }
